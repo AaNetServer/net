@@ -1,0 +1,94 @@
+Step 1. Get Ubuntu 22.04 VPS 
+-----------------------------
+  Create DigitalOcean Droplet using
+    Ubuntu 22.04
+    4GB of Memory
+    root example password f75q21w9Gx
+
+
+Step 2. In web console : Install XFCE Desktop, XRDP & QEMU
+-----------------------------------------------------------
+  apt-get update && apt-get upgrade -y
+  apt-get install xfce4 firefox xrdp gzip -y
+  apt-get install qemu qemu-utils qemu-system-x86 -y
+  echo xfce4-session >~/.xsession
+
+Then reboot
+
+
+Step 3. In RDP : Download Windows & Virtio Drivers ISOs
+-----------------------------------------------------------
+  get virtio iso - google "windows download virtio drivers"
+  get windows iso - google "windows iso download"
+  Fill in qemu-system-x86_64 statement lower down, with names of ISO files
+  reboot
+
+
+Step 4. In Web Console : Start Windows Install in QEMU
+--------------------------------------------------------------
+   qemu-img create -f raw harddisk.raw 24G
+
+   qemu-system-x86_64 \
+     -m 3000M \
+     -cpu host \
+     -enable-kvm \
+     -boot order=d \
+     -usbdevice tablet \
+     -drive file=harddisk.raw,format=raw,if=virtio \  
+     -drive file=/root/Downloads/{downloaded-windows}.iso,media=cdrom \
+     -drive file=/root/Downloads/{downloaded virtio}.iso,media=cdrom \
+     -vnc :55555 
+
+   via a VNC Viewer eg. RealVNC {Droplet IP Address}:61455  
+      (Note:5900+55555=61455)
+
+
+Step 5. In VNC : Install & Configure Windows
+--------------------------------------------------------------
+On VirtIO CD Select {windows version}\amd64 folder for ;
+     a) Balloon - VirtIO Balloon Driver 
+     b) NetKVM - Red Hat Virtio Ethernet Adapter 
+     c) vioRNG - Random Number Generator
+     d) VioSCSI - Red Hat Virtio SCSI Pass-through contoller 
+     e) VioStor - Red Hat Virtio ScSI Controller
+   
+   Windows user password eg. G6t4r3e2i9m8
+
+   Configuration - When on Desktop : 
+      1) Enable Remote Desktop   
+      2) Change RDP Port from 3389 to 19529   
+              Start the registry editor. ...
+              In REGEDIT Navigate to the following registry subkey: HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp.
+              Find PortNumber.
+              Click Edit, Modify, and then click Decimal.
+              Type the new port number, and then click OK.
+      3) In [Windows Defender Firewall with Advanced Security]
+              Add New [inbound rule]
+              to Allow TCP Port 19529 thru Domain, Private & Public Profiles
+              called "Rule 19529 for RDP"
+              Disable ALL other INCOMMING RULES
+      4) IF Current User is called "Administrator", rename to "WinAdmin"
+      4) Windows Update & restart
+      5) Clean up C Drive
+      6) Finally Shut Down
+
+
+Step 6. In web Console : Gzip Windows Harddisk
+-----------------------------------------------
+   ls -la
+   df
+   dd if=harddisk.raw status=progress | gzip | dd of=win_[winversion].gz
+          (Wait until finished in about 15 minutes)
+
+   ls -l
+   rm harddisk.raw
+   reboot
+
+
+Step 7. - Example deploy to a VPS Provider
+------------------------------------------
+In the Destination VM : 
+   lsblk
+   sudo ssh root@[IP address of Droplet] dd if=win_[winversion].gz | gunzip | sudo dd of=/dev/[sda/vda] status=progress
+
+
